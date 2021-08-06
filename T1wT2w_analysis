@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/MLCTBS/Test
+
+# load the fsl module
+module load fsl6.0
+
+echo "T1w/T2w analysis"
+# here we need to add the subject numbers
+for i in 01602 01603 0022 0023 02202 02203 02302 02303
+
+	do
+
+	# cd to the anat folder of the subject
+	cd sub-${i}/anat/
+
+	# print in the terminal the path
+	echo $PWD
+
+	# print the starting statement
+	echo "starting sub-${i}"
+
+	# check if the brain extracted T1w file is present in the folder
+	if [ -f sub-"${i}"_rec-NORM_T1w_brain.nii.gz ]; then
+		# print the statement if the brain extracted FLASH file is found
+		echo "T1w_brain found"
+		# assign the file to the variable 'T1w'
+		T1w=sub-"${i}"_rec-NORM_T1w_brain.nii.gz
+
+		# check if the brain extracted T2w is present in the folder
+		if [ -f sub-"${i}"_rec-NORM_T2w_brain.nii.gz ]; then
+			# print the statement if the brain extracted T2w is found
+			echo "T2w_brain found"
+			echo -e
+			echo "STEP1: registration of T2w_brain to T1w_brain"
+			echo "starting registration of T2w_brain to T1w_brain"
+			# input volume for the registration of T2w to T1w, ie the T2w_brain
+			input_t2_to_t1=sub-"${i}"_rec-NORM_T2w_brain.nii.gz
+			# reference image for the registration of T2w to T1w, ie the T1w_brain
+			ref_t2_to_t1=sub-"${i}"_rec-NORM_T1w_brain.nii.gz
+			# output volume of the registration of T2w to T1w
+			output_t2_to_t1=sub-"${i}"_rec-NORM_T2w_brain_reg_T1w.nii.gz
+			# output matrix of the registration of T2w to T1w
+			mat_t2_to_t1=sub-"${i}"rec-NORM_T2w_brain_reg_T1w.mat
+
+/usr/share/fsl/6.0/bin/flirt -in $input_t2_to_t1 -ref $ref_t2_to_t1 -out $output_t2_to_t1 -omat $mat_t2_to_t1 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp spline
+				echo "registration of T2w_brain to T1w_brain completed"
+				echo -e
+
+				echo "STEP2: registration of T1w_brain to MNI152_2mm and co-registration of T2w_to_T1w to MNI152_2mm"
+				# input volume for the registration to MNI space, ie T1w_brain
+				input_t1_to_mni=sub-"${i}"_rec-NORM_T1w_brain.nii.gz
+				# refernce image for the registration to MNI space, ie MNI152_2mm
+				ref_mni=/usr/share/fsl/6.0/data/standard/MNI152_T1_2mm_brain
+				# output for the registration of T1w to MNI space
+				output_t1_to_mni=sub-"${i}"_rec-NORM_T1w_brain_to_mni.nii.gz
+				# input for the co-registration of T2w to MNI space, ie T2w_to_T1w
+				input_t2_to_mni=sub-"${i}"_rec-NORM_T2w_brain_reg_T1w.nii.gz
+				# output for the co-registration of T2w to MNI space
+				output_t2_to_mni=sub-"${i}"_rec-NORM_T2w_brain_to_mni.nii.gz
+				# output matrix of the registration of T1w to MNI space
+				mat_t1_to_mni=sub-"${i}"_rec-NORM_T1w_brain_to_mni.mat
+				echo "starting registration of T1w_brain to MNI152_2mm"
+/usr/share/fsl/6.0/bin/flirt -in $input_t1_to_mni -ref $ref_mni  -out $output_t1_to_mni -omat $mat_t1_to_mni -bins 256 -cost corratio -searchrx -90 90 -searchry -90 90 -searchrz -90 90 -dof 6  -interp spline
+
+				echo "registration of T1w to MNI152_2mm completed"
+				echo "starting co-registration of T2w_to_T1w to MNI152_2mm"
+/usr/share/fsl/6.0/bin/flirt -in $input_t2_to_mni -ref $ref_mni -out $output_t2_to_mni -applyxfm -init $mat_t1_to_mni -interp spline
+
+				echo "co-registration of T2w_to_T1w to MNI152_2mm completed"
+				echo -e
+
+				echo "STEP3: calculating T1w/T2w"
+				division_volume=sub-"${i}"_T1w_T2w_ratio.nii.gz
+				fslmaths $output_t1_to_mni -div $output_t2_to_mni $division_volume
+
+				# this was the last step, print in the terminal that we're done with
+				# this participant
+				echo "sub-${i} finished"
+				echo -e
+			else
+			echo "T2_brain not found"
+			echo -e
+			echo "T1w/T2w aborted"
+			fi
+		else
+		echo "T1_brain not found"
+		echo -e
+		echo "T1w/T2w aborted"
+		fi
+
+	# cd back to the BIDS folder
+	cd ../..
+
+done

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+source ~/.bashrc
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/T1w_T2w_ratio/PVE_2/1mm
+
+# print in the terminal the path
+echo $PWD
+echo -e
+
+cd Day2-Day3/
+echo "start DAY2-DAY3"
+echo -e
+
+cd B12
+
+echo "start B12 group"
+echo -e
+echo $PWD
+randomise -i RATIO_PVE_2_B12_DAY2_DAY3_1mm -o RATIO_PVE_2_B12_DAY2_DAY3_1mm_PairedT -d RATIO_PVE2_B12_DAY2_DAY3_1mm.mat -t RATIO_PVE2_B12_DAY2_DAY3_1mm.con -e RATIO_PVE2_B12_DAY2_DAY3_1mm.grp -T 
+

@@ -1,0 +1,138 @@
+#!/bin/bash
+
+#Register T1w_day2 to T1w_day1 using nearest neighbour 6 DOF - DONE
+#Register T1w_day3 to T1w_day1 using nearest neighbour 6 DOF - DONE
+#Register T2w_day1 to T1w_day1 using nearest neighbour 6 DOF - DONE (from individual analysis)
+#Divide Tw1_day1 by Tw2_day1_in_T1_space - DONE (from individual analysis)
+#Register T2w_day2 to T1w_day2_reg_T1w_day1 using nearest neighbour 6 DOF - DONE
+#Divide T1w_day2_reg_T1w_day1 by Tw2_day2_in_T1_space - DONE
+#Register T2w_day3 to T1w_day3_reg_T1w_day1 using nearest neighbour 6 DOF - DONE
+#Divide T1w_day3_reg_T1w_day1 by Tw2_day3_in_T1_space -DONE
+
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# load the fsl module
+module load fsl6.0
+
+echo "T1w/T2w analysis - GROUP"
+# here we need to add the subject numbers
+
+day1=(00101 00201 00301 00401 00501 00601 00701 00801 00901 01001 0011 01201 01301 01601 01901 02101 0022 0023 0035 0036 0037 0038 0040 0041 0042 0043)
+day2=(00102 00202 00302 00402 00502 00602 00702 00802 00902 01002 01102 01202 01302 01602 01902 02102 02202 02302 03502 03602 03702 03802 04002 04102 04202 04302)
+day3=(00103 00203 00303 00403 00503 00603 00703 00803 00903 01003 01103 01203 01303 01603 01903 02103 02203 02303 03503 03603 03703 03803 04003 04103 04203 04303)
+subject=(001 002 003 004 005 006 007 008 009 010 011 012 013 016 019 021 022 023 035 036 037 038 040 041 042 043)
+
+for i in 0 1 ; do
+d1=${day1[${i}]}
+d2=${day2[${i}]}
+d3=${day3[${i}]}
+sub=${subject[${i}]}
+
+echo "starting sub-${sub}"
+echo -e
+
+# register T1w day2 to T1w day1 using nearest neighbour 6DOF
+echo "register T1w_day2 to T1w_day1 using nearest neighbour 6DOF"
+
+# reference image for the registration of T1w_day2 to T1w_day1, ie the T1w_day1
+t1_day1=sub-${d1}/anat/sub-"${d1}"_rec-NORM_T1w_brain.nii.gz
+
+# input volume for the registration of T1w_day2 to T1w_day1, ie the T1w_day2
+t1_day2=sub-${d2}/anat/sub-"${d2}"_rec-NORM_T1w_brain.nii.gz
+
+# output volume of the registration of T2w to T1w
+output_t1_day2_to_t1_day1=sub-"${sub}"_rec-NORM_T1w_day2_reg_T1w_day1_nearestneighbour.nii.gz
+
+# output matrix of the registration of T2w to T1w
+mat_t1_day2_to_t1_day1=sub-"${sub}"rec-NORM_T1w_day2_reg_T1w_day1_nearestneighbour.mat
+
+/usr/share/fsl/6.0/bin/flirt -in $t1_day2 -ref $t1_day1 -out $output_t1_day2_to_t1_day1 -omat $mat_t1_day2_to_t1_day1 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+echo "register T1w_day2 to T1w_day1 using nearest neighbour 6DOF completed"
+echo -e
+
+t2_day1_REG_t1_day1=sub-${d1}/anat/sub-"${d1}"_rec-NORM_T2w_brain_reg_T1w_nearestneighbour.nii.gz
+ratio_t1_t2_day1=sub-${d1}/anat/sub-"${d1}"_T1w_T2w_ratio_nearestneighbour_thresholded.nii.gz
+
+#Register T2w_day2 to T1w_day2_reg_T1w_day1 using nearest neighbour 6 DOF
+echo "Register T2w_day2 to T1w_day2_reg_T1w_day1 using nearest neighbour 6 DOF"
+echo -e
+
+# reference image for the registration of T2w_day2 to T1w_day2, ie the T1w_day2
+t1_day2_reg=sub-"${sub}"_rec-NORM_T1w_day2_reg_T1w_day1_nearestneighbour.nii.gz
+
+# input volume for the registration of T2w_day2 to T1w_day2, ie the T2w_day2
+t2_day2=sub-${d2}/anat/sub-"${d2}"_rec-NORM_T2w_brain.nii.gz
+
+# output volume of the registration of T2w_day2 to T1w_day2
+output_t2_day2_to_t1_day2=sub-"${sub}"_rec-NORM_T2w_day2_reg_T1w_day2_nearestneighbour.nii.gz
+
+# output matrix of the registration of T2w_day2 to T1w_day2
+mat_t2_day2_to_t1_day2=sub-"${sub}"_rec-NORM_T2w_day2_reg_T1w_day2_nearestneighbour.mat
+
+/usr/share/fsl/6.0/bin/flirt -in $t2_day2 -ref $t1_day2_reg -out $output_t2_day2_to_t1_day2 -omat $mat_t2_day2_to_t1_day2 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+echo "Register T2w_day2 to T1w_day2_reg_T1w_day1 using nearest neighbour 6 DOF completed"
+echo -e
+
+echo "calculating T1w/T2w for day2 in T1 space [method: nearestneighbour]"
+division_volume_day2=sub-"${i}"_T1w_T2w_ratio_nearestneighbour_day2.nii.gz
+fslmaths $t1_day2_reg -div $output_t2_day2_to_t1_day2 $division_volume_day2
+echo "calculating T1w/T2w for day2 in T1 space [method: nearestneighbour] completed"
+echo -e
+
+# register T1w day3 to T1w day1 using nearest neighbour 6DOF
+echo "register T1w_day3 to T1w_day1 using nearest neighbour 6DOF"
+
+# reference image for the registration of T1w_day2 to T1w_day1, ie the T1w_day1
+t1_day1=sub-${d1}/anat/sub-"${d1}"_rec-NORM_T1w_brain.nii.gz
+
+# input volume for the registration of T1w_day2 to T1w_day1, ie the T1w_day2
+t1_day3=sub-${d3}/anat/sub-"${d3}"_rec-NORM_T1w_brain.nii.gz
+
+# output volume of the registration of T2w to T1w
+output_t1_day3_to_t1_day1=sub-"${sub}"_rec-NORM_T1w_day3_reg_T1w_day1_nearestneighbour.nii.gz
+
+# output matrix of the registration of T2w to T1w
+mat_t1_day3_to_t1_day1=sub-"${sub}"rec-NORM_T1w_day3_reg_T1w_day1_nearestneighbour.mat
+
+/usr/share/fsl/6.0/bin/flirt -in $t1_day3 -ref $t1_day1 -out $output_t1_day3_to_t1_day1 -omat $mat_t1_day3_to_t1_day1 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+echo "register T1w_day3 to T1w_day1 using nearest neighbour 6DOF completed"
+echo -e
+
+#Register T2w_day3 to T1w_day3_reg_T1w_day1 using nearest neighbour 6 DOF
+echo "Register T2w_day3 to T1w_day3_reg_T1w_day1 using nearest neighbour 6 DOF"
+echo -e
+
+# reference image for the registration of T2w_day2 to T1w_day2, ie the T1w_day2
+t1_day3_reg=sub-"${sub}"_rec-NORM_T1w_day3_reg_T1w_day1_nearestneighbour.nii.gz
+
+# input volume for the registration of T2w_day2 to T1w_day2, ie the T2w_day2
+t2_day3=sub-${d3}/anat/sub-"${d3}"_rec-NORM_T2w_brain.nii.gz
+
+# output volume of the registration of T2w_day2 to T1w_day2
+output_t2_day3_to_t1_day3=sub-"${sub}"_rec-NORM_T2w_day3_reg_T1w_day3_nearestneighbour.nii.gz
+
+# output matrix of the registration of T2w_day2 to T1w_day2
+mat_t2_day3_to_t1_day3=sub-"${sub}"_rec-NORM_T2w_day2_reg_T1w_day2_nearestneighbour.mat
+
+/usr/share/fsl/6.0/bin/flirt -in $t2_day3 -ref $t1_day3_reg -out $output_t2_day3_to_t1_day3 -omat $mat_t2_day3_to_t1_day3 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+echo "Register T2w_day3 to T1w_day3_reg_T1w_day1 using nearest neighbour 6 DOF completed"
+echo -e
+
+echo "calculating T1w/T2w for day3 in T1 space [method: nearestneighbour]"
+division_volume_day3=sub-"${i}"_T1w_T2w_ratio_nearestneighbour_day3.nii.gz
+fslmaths $t1_day3_reg -div $output_t2_day3_to_t1_day3 $division_volume_day3
+echo "calculating T1w/T2w for day3 in T1 space [method: nearestneighbour] completed"
+echo -e
+
+echo "sub-${sub} COMPLETED"
+echo -e
+
+done
+
+# /usr/share/fsl/6.0/bin/flirt -in sub-00102/anat/sub-00102_rec-NORM_T1w_brain.nii.gz -ref sub-00101/anat/sub-00101_rec-NORM_T1w_brain.nii.gz -out sub-001_rec-NORM_T1w_day2_reg_T1w__day1_nearestneighbour.nii.gz -omat sub-001_rec-NORM_T1w_day2_reg_T1w__day1_nearestneighbour.mat -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour

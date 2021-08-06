@@ -1,0 +1,73 @@
+#!/bin/bash
+
+source ~/.bashrc
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# cd to the anat folder of the subject
+cd sub-PARTICIPANTID/anat/
+
+# print in the terminal the path
+echo $PWD
+
+# check if the brain extracted T1w file is present in the folder
+#if [ -f sub-PARTICIPANTID_rec-NORM_T1w_brain.nii.gz ]; then
+
+# assign the file to the variable 't1w_volume'
+t1w_volume=sub-PARTICIPANTID_rec-NORM_T1w_brain.nii.gz
+
+# check if the brain extracted T2w is present in the folder
+#if [ -f sub-PARTICIPANTID_rec-NORM_T2w_brain.nii.gz ]; then
+# print the statement if the brain extracted T2w is found
+
+# input volume for the registration of T2w to T1w, ie the T2w_brain
+input_t2_to_t1=sub-PARTICIPANTID_rec-NORM_T2w_brain.nii.gz
+
+# reference image for the registration of T2w to T1w, ie the T1w_brain
+ref_t2_to_t1=sub-PARTICIPANTID_rec-NORM_T1w_brain.nii.gz
+
+# output volume of the registration of T2w to T1w, ie T2w_regT1w
+output_t2_to_t1=sub-PARTICIPANTID_rec-NORM_T2w_brain_reg_T1w_nearestneighbour.nii.gz
+
+# output matrix of the registration of T2w to T1w
+mat_t2_to_t1=sub-PARTICIPANTID_rec-NORM_T2w_brain_reg_T1w_nearestneighbour.mat
+
+#flirt -in $input_t2_to_t1 -ref $ref_t2_to_t1 -out $output_t2_to_t1 -omat $mat_t2_to_t1 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+echo "Registration of T2w to T1w COMPLETED"
+
+division_volume=sub-PARTICIPANTID_T1w_T2w_ratio_nearestneighbour.nii.gz
+
+# divide the T1w by the T2w_regT1w
+#fslmaths $ref_t2_to_t1 -div $output_t2_to_t1 $division_volume
+
+echo "T1w/T2w ratio calculated"
+
+# reference volume for the linear registration of T1w_T2w_ratio, ie the T1w_brain from sub-011
+flirt_ref=/storage/shared/research/cinn/2018/GABAVB/BIDS/sub-0011/anat/sub-0011_rec-NORM_T1w_brain.nii.gz
+
+# input volume for the linear registration of T1w_T2w_ratio ie T1w_T2w_ratio
+flirt_in=sub-PARTICIPANTID_T1w_T2w_ratio_nearestneighbour.nii.gz
+
+# output volume for the linear registration of T1w_T2w_ratio
+flirt_out=sub-PARTICIPANTID_T1w_T2w_ratio_CANlin.nii.gz
+
+# output matrix for the linear registration of T1w_T2w_ratio
+flirt_mat=sub-PARTICIPANTID_T1w_T2w_ratio_CANlin.mat
+
+# input volume for the non-linear registration of T1w_T2w_ratio
+fnirt_in=sub-PARTICIPANTID_T1w_T2w_ratio_nearestneighbour.nii.gz
+
+# output volume for the non-linear registration of T1w_T2w_ratio
+fnirt_out=sub-PARTICIPANTID_T1w_T2w_ratio_CAN_NOLin.nii.gz
+
+#flirt -in $flirt_in -ref $flirt_ref -dof 12 -out $flirt_out -omat $flirt_mat
+
+echo "Linear registration of T1w_T2w_ratio to T1w_sub-011 completed"
+
+#fnirt --in=$fnirt_in --ref=$flirt_ref --aff=$flirt_mat --iout=$fnirt_out 
+
+echo "Non-linear registration of T1w_T2w_ratio to T1w_sub-011 completed"
+#fi
+#fi

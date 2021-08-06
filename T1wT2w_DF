@@ -1,0 +1,105 @@
+#!/bin/bash
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# load the fsl module
+module load fsl6.0
+
+echo "T1w/T2w analysis - individual level"
+# STEPS
+# 1- Register the T2w to the T1w acquired on the day using FLIRT (interpolation nearest neighbour, 6DOF), creating T2w_reg_T1w
+# 2- Calculate the T1w/T2w_ratio as T1w/T2w_ratio=T1w/T2w_reg_T1w
+# 3- Register the T1w/T2w_ratio image to the CANONICAL T1w*
+# 4- Run group analysis
+# 5- Register CANONICAL T1w to MNI_1mm and co-register the results of the group analysis
+
+# here we need to add the subject numbers
+for i in 00101	00102	00103	00201	00202	00203	00301	00302	00303	00401	00402	00403	00501	00502	00503	00601	00602	00603	00701	00702	00703	00801	00802	00803	00901	00902	00903	01001	01002	01003	0011	01102	01103	01201	01202	01203	01301	01302	01303	01401	01403	01501	01502	01601	01602	01603	01901	01902	01903	02101	02102	02103	0022	02202	02203	0023	02302	02303	0035	03502	03503	0036	03602	0037	03702	03703	0038	03802	03803	0040	04002	04003	0041	04102	04103	0042	04202	04203	0043	04302	04303
+
+	do
+
+	# cd to the anat folder of the subject
+	cd sub-${i}/anat/
+
+	# print in the terminal the path
+	echo $PWD
+
+	# print the starting statement
+	echo "starting sub-${i}"
+
+	# check if the brain extracted T1w file is present in the folder
+	if [ -f sub-"${i}"_rec-NORM_T1w_brain.nii.gz ]; then
+		# print the statement if the brain extracted T1w file is found
+		echo "T1w_brain found"
+		# assign the file to the variable 't1w_volume'
+		t1w_volume=sub-"${i}"_rec-NORM_T1w_brain.nii.gz
+
+		# check if the brain extracted T2w is present in the folder
+		if [ -f sub-"${i}"_rec-NORM_T2w_brain.nii.gz ]; then
+			# print the statement if the brain extracted T2w is found
+			echo "T2w_brain found"
+			echo -e
+
+			echo "Method: nearest neighbour"
+			echo "STEP1: registration of T2w_brain to T1w_brain using nearestneighbour"
+
+			# input volume for the registration of T2w to T1w, ie the T2w_brain
+			input_t2_to_t1=sub-"${i}"_rec-NORM_T2w_brain.nii.gz
+
+			# reference image for the registration of T2w to T1w, ie the T1w_brain
+			ref_t2_to_t1=sub-"${i}"_rec-NORM_T1w_brain.nii.gz
+
+			# output volume of the registration of T2w to T1w
+			output_t2_to_t1=sub-"${i}"_rec-NORM_T2w_brain_reg_T1w_nearestneighbour.nii.gz
+
+			# output matrix of the registration of T2w to T1w
+			mat_t2_to_t1=sub-"${i}"rec-NORM_T2w_brain_reg_T1w_nearestneighbour.mat
+
+/usr/share/fsl/6.0/bin/flirt -in $input_t2_to_t1 -ref $ref_t2_to_t1 -out $output_t2_to_t1 -omat $mat_t2_to_t1 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+			echo "registration of T2w_brain to T1w_brain completed"
+			echo -e
+
+			echo "STEP2: calculating T1w/T2w in T1w space [method: nearestneighbour]"
+			division_volume=sub-"${i}"_T1w_T2w_ratio_nearestneighbour.nii.gz
+			fslmaths $output_t1_to_mni -div $output_t2_to_mni $division_volume
+			echo "calculation of T1w/T2w in T1w space [method: nearestneighbour] completed"
+			echo -e
+
+			echo "STEP3: register of T1w/T2w in T1w space to the CANONICAL T1w using FNIRT"
+			echo -e
+
+			flirt_ref=/usr/share/fsl/6.0/data/standard/MNI152_T1_1mm_brain
+			flirt_in=sub-"${i}"_T1w_T2w_ratio_nearestneighbour.nii.gz
+			flirt_out=MTR_T1wtoCANlin_T1w_T2w
+			flirt_mat=MTR_T1wtoCANlin_T1w_T2w.mat
+			fnirt_in=sub-"${i}"_rec-NORM_T1w.nii.gz
+			fnirt_out=T1w_T2w_ratio_nearestneighbour_CANONICAL.nii.gz
+
+			flirt -in $flirt_in -ref $flirt_ref -dof 12 -out $flirt_out -omat $flirt_mat
+			fnirt --in=$flirt_in --ref=$flirt_ref --aff=$flirt_mat --iout=$fnirt_out --cout=T1toMNI_coef --fout=T1toMNI_warp
+
+			echo "calculation of T1w/T2w in T1w space [method: nearestneighbour] completed"
+			echo -e
+
+			# this was the last step, print in the terminal that we're done with
+			# this participant
+			echo "sub-${i} finished"
+			echo -e
+		else
+		echo "T2w_brain not found"
+		echo -e
+		echo "T1w/T2w analysis aborted"
+		fi
+
+	else
+	echo "T1w_brain not found"
+	echo -e
+	echo "T1w/T2w analysis aborted"
+	fi
+
+# cd back to the BIDS folder
+cd ../..
+
+done

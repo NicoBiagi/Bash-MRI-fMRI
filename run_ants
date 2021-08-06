@@ -1,0 +1,17 @@
+#!/bin/bash
+source ~/.bashrc
+export ANTSPATH=/storage/gold/cinn/software/Ubuntu/18.04/ants/bin
+export PATH=${ANTSPATH}:$PATH
+mkdir /storage/gold/cinn/2013/neuroade/Thalamus/Output/PARTICIPANTID/ants/
+cd /storage/gold/cinn/2013/neuroade/Thalamus/Output/PARTICIPANTID/ants/
+# path to ants stored data for ppt
+cd 
+python /storage/gold/cinn/2013/neuroade/Thalamus/slurm/ants_get_t1_PARTICIPANTID.py
+
+bash /storage/gold/cinn/2013/neuroade/Thalamus/scripts/ants/antsRegistrationSyN.sh -d 3 -f /storage/gold/cinn/2013/neuroade/Thalamus/temp/Install/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz -m /storage/gold/cinn/2013/neuroade/Thalamus/temp/Data/PARTICIPANTID_T1w_acpc_dc_restore_brain.nii.gz -o ants_syn
+
+
+for roi in "Left-AV" "Left-CeM" "Left-CL" "Left-CM" "Left-LD" "Left-LGN" "Left-LP" "Left-L-Sg" "Left-MDl" "Left-MDm" "Left-MGN" "Left-MV(Re)" "Left-Pc" "Left-Pf" "Left-Pt" "Left-PuA" "Left-PuI" "Left-PuL" "Left-PuM" "Left-R" "Left-VA" "Left-VAmc" "Left-VLa" "Left-VLp" "Left-VM" "Left-VPL" "Right-AV" "Right-CeM" "Right-CL" "Right-CM" "Right-LD" "Right-LGN" "Right-LP" "Right-L-Sg" "Right-MDl" "Right-MDm" "Right-MGN" "Right-MV(Re)" "Right-Pc" "Right-Pf" "Right-Pt" "Right-PuA" "Right-PuI" "Right-PuL" "Right-PuM" "Right-R" "Right-VA" "Right-VAmc" "Right-VLa" "Right-VLp" "Right-VM" "Right-VPL"; do
+	antsApplyTransforms -d 3 -i /storage/gold/cinn/2013/neuroade/Thalamus/Output/PARTICIPANTID/anatSeg/${roi}.nii.gz -r /storage/gold/cinn/2013/neuroade/Thalamus/temp/Install/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz -o /storage/gold/cinn/2013/neuroade/Thalamus/Output/PARTICIPANTID/anatSeg/${roi}_mni1mm.nii.gz -t ./ants_syn0GenericAffine.mat -t ./ants_syn1Warp.nii.gz 
+
+done

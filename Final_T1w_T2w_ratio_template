@@ -1,0 +1,122 @@
+#!/bin/bash
+
+# STEPS
+# 1- Calculate the magnetisation transfer ratio (MTR) as MTR=100×(MToff−MTon)/MToff 
+# 2- Register the MTR image to the T1w image acquired on the day using FLIRT (interpolation nearest neighbour, 6DOF), creating the MTR_T1w
+# 3- Register the MTR_T1w to the CANONICAL T1w *
+# 4- Run group analysis
+# 5- Register CANONICAL T1w to MNI_1mm and co-register the results of the group analysis
+
+source ~/.bashrc
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# cd to the anat folder of the subject
+cd sub-PARTICIPANTID/anat/
+
+# print in the terminal the path
+echo $PWD
+
+T2w=sub-PARTICIPANTID_rec-NORM_T2w.nii.gz
+T2w_brain=sub-PARTICIPANTID_rec-NORM_T2w_brain.nii.gz
+T1w=sub-PARTICIPANTID_rec-NORM_T1w.nii.gz
+T1w_brain=sub-PARTICIPANTID_rec-NORM_T1w_brain.nii.gz
+standard=$FSL_DIR/data/standard/MNI152_T1_2mm_brain
+lin_output=sub-PARTICIPANTID_rec-NORM_T1w_brain_toMNIlin.nii.gz
+nonlin_output=sub-PARTICIPANTID_rec-NORM_T1w_toMNInonlin.nii.gz
+t2w_mni=sub-PARTICIPANTID_rec-NORM_T2w_toMNI.nii.gz
+t2w_mni_2mm=sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm.nii.gz
+t1w_mni=sub-PARTICIPANTID_rec-NORM_T1w_toMNI.nii.gz
+t1w_mni_2mm=sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm.nii.gz
+fnirt_config=$FSL_DIR/etc/flirtsch/T1_2_MNI152_2mm.cnf
+
+echo "Within-subject Registration, register T2w to T1w"
+#flirt -in $T2w_brain -ref $T1w_brain -dof 6 -cost corratio -omat T2toT1_CR.mat -out T2toT1_CR
+echo -e
+
+echo "Subject to Standard Space Registration"
+echo "STEP1: linear registration of T1w_brain to MNI152_T1_2mm"
+#flirt -in $T1w_brain -ref $standard -dof 12 -out $lin_output -omat T1toMNIlin.mat
+echo -e
+
+echo "STEP2: non-linear registration of T1w to MNI152_T1_2mm"
+#fnirt --in=$T1w --aff=T1toMNIlin.mat --config=$fnirt_config --iout=$nonlin_output --cout=T1toMNI_coef --fout=T1toMNI_warp
+echo -e
+
+echo "Create a higher resolution version of the non-linear"
+#applywarp -i $T1w -r $FSLDIR/data/standard/MNI152_T1_1mm.nii.gz -w T1toMNI_warp.nii.gz -o $t1w_mni
+
+echo "transform the T2w image into the MNI standard space [1mm]"
+#applywarp -i $T2w -r $FSLDIR/data/standard/MNI152_T1_1mm.nii.gz --premat=T2toT1_CR.mat -w T1toMNI_warp.nii.gz -o $t2w_mni
+echo -e
+
+echo "transform the T2w image into the MNI standard space [2mm]"
+applywarp -i $T2w -r $FSLDIR/data/standard/MNI152_T1_2mm.nii.gz --premat=T2toT1_CR.mat -w T1toMNI_warp.nii.gz -o $t2w_mni_2mm
+applywarp -i $T1w -r $FSLDIR/data/standard/MNI152_T1_2mm.nii.gz -w T1toMNI_warp.nii.gz -o $t1w_mni_2mm
+echo -e
+
+echo "Robust BET on T1w_toMNI"
+echo "starting BET"
+echo -e
+
+echo "generating the brain mask from the BETTED image"
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_brain.nii.gz -thr 1 -bin sub-PARTICIPANTID_rec-NORM_T1w_brain_mask.nii.gz
+#fslmaths sub-PARTICIPANTID_rec-NORM_T2w_brain.nii.gz -thr 1 -bin sub-PARTICIPANTID_rec-NORM_T2w_brain_mask.nii.gz
+echo -e
+
+echo "transform the brain mask into standard space"
+#applywarp -i sub-PARTICIPANTID_rec-NORM_T1w_brain_mask.nii.gz -r $FSLDIR/data/standard/MNI152_T1_1mm.nii.gz -w T1toMNI_warp.nii.gz -o sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_mask.nii.gz
+#applywarp -i sub-PARTICIPANTID_rec-NORM_T2w_brain_mask.nii.gz -r $FSLDIR/data/standard/MNI152_T1_1mm.nii.gz --premat=T2toT1_CR.mat -w T1toMNI_warp.nii.gz -o sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_mask.nii.gz
+applywarp -i sub-PARTICIPANTID_rec-NORM_T1w_brain_mask.nii.gz -r $FSLDIR/data/standard/MNI152_T1_2mm.nii.gz -w T1toMNI_warp.nii.gz -o sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_mask.nii.gz
+applywarp -i sub-PARTICIPANTID_rec-NORM_T2w_brain_mask.nii.gz -r $FSLDIR/data/standard/MNI152_T1_2mm.nii.gz --premat=T2toT1_CR.mat -w T1toMNI_warp.nii.gz -o sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_mask.nii.gz
+echo -e
+
+echo "generate the betted brain in standard space"
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_mask.nii.gz sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain.nii.gz
+#fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_mask.nii.gz sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain.nii.gz
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_mask.nii.gz sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain.nii.gz
+fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_mask.nii.gz sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain.nii.gz
+echo -e
+
+echo "use t1_mni_brain and t2_mni_brain to segment and generate partial volumes and masks"
+#fast -t 1 -n 3 -H 0.1 -I 4 -l 20.0 -g -B -b -o sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_SINGLE_FAST sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain
+fast -t 1 -n 3 -H 0.1 -I 4 -l 20.0 -g -B -b -o sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_SINGLE_FAST sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain
+echo -e
+
+#PVE 0 = CSF ; PVE 1 = Gray Matter ; PVE 2 = White Matter
+echo "intensity normalisation using fslmaths"
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain -inm 1 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM
+#fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain -inm 1 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain -inm 1 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM
+fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain -inm 1 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM
+echo -e
+
+echo "create partial volume images for t2w_mni_brain"
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_SINGLE_FAST_seg_0 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM_SINGLE_FAST_pve_0
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_SINGLE_FAST_seg_1 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM_SINGLE_FAST_pve_1
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_SINGLE_FAST_seg_2 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM_SINGLE_FAST_pve_2
+
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_SINGLE_FAST_seg_0 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_0
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_SINGLE_FAST_seg_1 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_1
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_SINGLE_FAST_seg_2 sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_2
+
+#fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_SINGLE_FAST_seg_0 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM_SINGLE_FAST_pve_0
+#fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_SINGLE_FAST_seg_1 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM_SINGLE_FAST_pve_1
+#fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_SINGLE_FAST_seg_2 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM_SINGLE_FAST_pve_2
+fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_SINGLE_FAST_seg_0 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_0
+fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_SINGLE_FAST_seg_1 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_1
+fslmaths sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM.nii.gz -mul sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_SINGLE_FAST_seg_2 sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_2
+echo -e
+
+echo "calculate ratio for GM and WM"
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM_SINGLE_FAST_pve_0 -div sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM_SINGLE_FAST_pve_0 sub-PARTICIPANTID_RATIO_pve_0
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM_SINGLE_FAST_pve_1 -div sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM_SINGLE_FAST_pve_1 sub-PARTICIPANTID_RATIO_pve_1
+#fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_brain_NORM_SINGLE_FAST_pve_2 -div sub-PARTICIPANTID_rec-NORM_T2w_toMNI_brain_NORM_SINGLE_FAST_pve_2 sub-PARTICIPANTID_RATIO_pve_2
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_0 -div sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_0 sub-PARTICIPANTID_2mm_RATIO_pve_0
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_1 -div sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_1 sub-PARTICIPANTID_2mm_RATIO_pve_1
+fslmaths sub-PARTICIPANTID_rec-NORM_T1w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_2 -div sub-PARTICIPANTID_rec-NORM_T2w_toMNI_2mm_brain_NORM_SINGLE_FAST_pve_2 sub-PARTICIPANTID_2mm_RATIO_pve_2
+
+echo "done"
+
+

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# load the fsl module
+module load fsl5.0.9
+
+# load the dti toolkit module
+module load dti-tk
+
+# load anconda
+module load anaconda3
+
+# load the mrtrix module
+module load mrtrix3/mrtrix3
+

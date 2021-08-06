@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# load the fsl module
+module load fsl5.0.9
+
+echo "T1w/T2w analysis - GROUP"
+# here we need to add the subject numbers
+
+day1=(00101 00201 00301 00401 00501 00601 00701 00801 00901 01001 0011 01201 01301 01601 01901 02101 0022 0023 0035 0036 0037 0038 0040 0041 0042 0043)
+day2=(00102 00202 00302 00402 00502 00602 00702 00802 00902 01002 01102 01202 01302 01602 01902 02102 02202 02302 03502 03602 03702 03802 04002 04102 04202 04302)
+day3=(00103 00203 00303 00403 00503 00603 00703 00803 00903 01003 01103 01203 01303 01603 01903 02103 02203 02303 03503 03603 03703 03803 04003 04103 04203 04303)
+
+for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 ; do
+d1=${day1[${i}]}
+d2=${day2[${i}]}
+d3=${day3[${i}]}
+echo ${d1}
+done
+
+
+
+	do
+
+	# cd to the anat folder of the subject
+	cd sub-${d1}/anat/
+
+	# print in the terminal the path
+	echo $PWD
+
+	# print the starting statement
+	echo "starting sub-${d1}"
+
+	# check if the brain extracted T1w file is present in the folder
+	if [ -f sub-"${d1}"_rec-NORM_T1w_brain_reg_day1.nii.gz ]; then
+		# print the statement if the brain extracted FLASH file is found
+		echo "T1w_brain_reg_day1 found"
+		# assign the file to the variable 'T1w'
+		T1w=sub-"${d1}"_rec-NORM_T1w_brain_reg_day1.nii.gz
+
+		# check if the brain extracted T2w is present in the folder
+		if [ -f sub-"${i}"_rec-NORM_T2w_brain.nii.gz ]; then
+			# print the statement if the brain extracted T2w is found
+			echo "T2w_brain found"
+			echo -e
+
+			echo "Method: nearest neighbour"
+			echo "STEP1: registration of T2w_brain to T1w_brain_reg_day1 using nearestneighbour"
+			echo "starting registration of T2w_brain to T1w_brain_reg_day1"
+			# input volume for the registration of T2w to T1w, ie the T2w_brain
+			input_t2_to_t1=sub-"${i}"_rec-NORM_T2w_brain.nii.gz
+			# reference image for the registration of T2w to T1w, ie the T1w_brain
+			ref_t2_to_t1=sub-"${i}"_rec-NORM_T1w_brain_reg_day1.nii.gz
+			# output volume of the registration of T2w to T1w
+			output_t2_to_t1=sub-"${i}"_rec-NORM_T2w_brain_reg_T1w_nearestneighbour.nii.gz
+			# output matrix of the registration of T2w to T1w
+			mat_t2_to_t1=sub-"${i}"rec-NORM_T2w_brain_reg_T1w_nearestneighbour.mat
+
+/usr/share/fsl/6.0/bin/flirt -in $input_t2_to_t1 -ref $ref_t2_to_t1 -out $output_t2_to_t1 -omat $mat_t2_to_t1 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+
+				echo "registration of T2w_brain to T1w_brain completed"
+				echo -e
+				echo "STEP2: calculating T1w/T2w in T1 space [method: nearestneighbour]"
+				division_volume=sub-"${i}"_T1w_T2w_ratio_nearestneighbour_t1_space.nii.gz
+				fslmaths $ref_t2_to_t1 -div $output_t2_to_t1 $division_volume
+				echo "Calculation of T1w/T2w in T1 space completed"
+				echo -e
+			
+
+				# this was the last step, print in the terminal that we're done with
+				# this participant
+				echo "sub-${i} finished"
+				echo -e
+			else
+			echo "T2_brain not found"
+			echo -e
+			echo "T1w/T2w aborted"
+			fi
+		else
+		echo "T1_brain_reg_day1 not found"
+		echo -e
+		echo "T1w/T2w aborted"
+		fi
+
+	# cd back to the BIDS folder
+	cd ../..
+
+done
+
+# create the subtraction volumes
+fslmaths sub-02302/anat/sub-02302_T1w_T2w_ratio_nearestneighbour_t1_space.nii.gz -sub sub-0023/anat/sub-0023_T1w_T2w_ratio_nearestneighbour_t1_space.nii.gz sub-0023-T1w_T2w_ratio_day2_day1
+
+fslmaths sub-02303/anat/sub-02303_T1w_T2w_ratio_nearestneighbour_t1_space.nii.gz -sub sub-02302/anat/sub-02302_T1w_T2w_ratio_nearestneighbour_t1_space.nii.gz sub-0023-T1w_T2w_ratio_day3_day2

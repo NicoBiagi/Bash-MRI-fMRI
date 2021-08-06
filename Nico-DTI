@@ -1,0 +1,186 @@
+#!/bin/bash
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# load the fsl module
+module load fsl5.0.9
+
+for i in 00101	00102	00103	00201	00202	00203	00301	00302	00303	00401	00402	00403	00501	00502	00503	
+	do
+	
+	cd sub-${i}/dwi/
+
+	# print in the terminal the path
+	echo $PWD
+
+	# print the starting statement
+	echo "starting sub-${i}"
+
+	# check if the dwi run_1 file is present in the folder
+	if [ -f sub-"${i}"_rec-NORM_run-1_dwi.nii.gz ]; then
+
+	# use jq to see the PhaseEncodingDirection
+	a=$( jq '.PhaseEncodingDirection' sub-"${i}"_rec-NORM_run-1_dwi.json )
+	
+	# get the length of the string
+	a_chrlen=${#a}
+
+	# if the lenght is equal to 4 digits, then it's "j-"
+	if [ $a_chrlen -eq 4 ]; then
+	echo "AP"
+	run_1=1
+	
+	# otherwise it's "j"
+	else
+	echo "PA"
+	run_1=2
+	fi
+else
+
+# echo in the terminal if the run_1 is missing
+echo "Run-1 missing"
+
+fi
+
+	# check if the dwi run_2 file is present in the folder
+	if [ -f sub-"${i}"_rec-NORM_run-2_dwi.nii.gz ]; then
+
+	# use jq to see the PhaseEncodingDirection
+	b=$( jq '.PhaseEncodingDirection' sub-"${i}"_rec-NORM_run-2_dwi.json )
+
+
+
+	# get the length of the string
+	b_chrlen=${#b}
+
+	# if the lenght is equal to 4 digits, then it's "j-"
+	if [ $b_chrlen -eq 4 ]; then
+	echo "AP"
+	run_2=1
+	
+	# otherwise it's "j"
+	else
+	echo "PA"
+	run_2=2
+	fi
+else
+
+# echo in the terminal if the run_2 is missing
+echo "Run-2 missing"
+
+fi
+
+	# check if the dwi run_3 file is present in the folder
+	if [ -f sub-"${i}"_rec-NORM_run-3_dwi.nii.gz ]; then
+
+	# use jq to see the PhaseEncodingDirection
+	c=$( jq '.PhaseEncodingDirection' sub-"${i}"_rec-NORM_run-3_dwi.json )
+
+	# get the length of the string
+	c_chrlen=${#c}
+
+	# if the lenght is equal to 4 digits, then it's "j-"
+	if [ $c_chrlen -eq 4 ]; then
+
+	echo "AP"
+	run_3=1
+	
+	# otherwise it's "j"
+	else
+	echo "PA"
+	run_3=2
+	fi
+else
+
+# echo in the terminal if the run_3 is missing
+echo "Run-3 missing"
+
+fi
+
+	# check if the dwi run_4 file is present in the folder
+	if [ -f sub-"${i}"_rec-NORM_run-4_dwi.nii.gz ]; then
+
+	# use jq to see the PhaseEncodingDirection
+	d=$( jq '.PhaseEncodingDirection' sub-"${i}"_rec-NORM_run-4_dwi.json )
+
+	# get the length of the string
+	d_chrlen=${#d}
+
+	# if the lenght is equal to 4 digits, then it's "j-"
+	if [ $d_chrlen -eq 4 ]; then
+	echo "AP"
+	run_4=1
+	
+	# otherwise it's "j"
+	else
+	echo "PA"
+	run_4=2
+	fi
+else
+
+# echo in the terminal if the run_4 is missing
+echo "Run-4 missing"
+fi
+
+# check if run_1 and run_2 had the same encoding direction
+if [ $run_1 -eq $run_2 ] ;then
+
+	# if so, merge run_1 & run_2 nifti files
+	fslmerge -t sub-"${i}"_rec-NORM_run-AP_dwi.nii.gz sub-"${i}"_rec-NORM_run-1_dwi.nii.gz sub-"${i}"_rec-NORM_run-2_dwi.nii.gz 
+
+	# use 'paste' to concatenate the bvec and bval files for run_1 & run_2
+	paste sub-"${i}"_rec-NORM_run-1_dwi.bvec sub-"${i}"_rec-NORM_run-2_dwi.bvec > sub-"${i}"_rec-NORM_run-AP_dwi.bvec
+	paste sub-"${i}"_rec-NORM_run-1_dwi.bval sub-"${i}"_rec-NORM_run-2_dwi.bval > sub-"${i}"_rec-NORM_run-AP_dwi.bval
+
+	# if run_1 and run_2 had the same encodig direction, also run_3 & run_4 must have the same encoding direction
+	# merge run_3 & run_4 nifti files
+	fslmerge -t sub-"${i}"_rec-NORM_run-PA_dwi.nii.gz sub-"${i}"_rec-NORM_run-3_dwi.nii.gz sub-"${i}"_rec-NORM_run-4_dwi.nii.gz
+
+	# use 'paste' to concatenate the bvec and bval files for run_3 & run_4
+	paste sub-"${i}"_rec-NORM_run-3_dwi.bvec sub-"${i}"_rec-NORM_run-4_dwi.bvec > sub-"${i}"_rec-NORM_run-PA_dwi.bvec
+	paste sub-"${i}"_rec-NORM_run-3_dwi.bval sub-"${i}"_rec-NORM_run-4_dwi.bval > sub-"${i}"_rec-NORM_run-PA_dwi.bval
+
+# chcek if run_1 & run_3 had the same encoding direction
+elif [ $run_1 -eq $run_3 ]; then
+
+	# if so, merge run_1 & run_3 nifti files
+	fslmerge -t sub-"${i}"_rec-NORM_run-AP_dwi.nii.gz sub-"${i}"_rec-NORM_run-1_dwi.nii.gz sub-"${i}"_rec-NORM_run-3_dwi.nii.gz
+
+	# use 'paste' to concatenate the bvec and bval files for run_1 & run_3
+	paste sub-"${i}"_rec-NORM_run-1_dwi.bvec sub-"${i}"_rec-NORM_run-3_dwi.bvec > sub-"${i}"_rec-NORM_run-AP_dwi.bvec
+	paste sub-"${i}"_rec-NORM_run-1_dwi.bval sub-"${i}"_rec-NORM_run-3_dwi.bval > sub-"${i}"_rec-NORM_run-AP_dwi.bval
+
+	# if run_1 and run_3 had the same encodig direction, also run_2 & run_4 must have the same encoding direction
+	# merge run_2 & run_4 nifti files
+	fslmerge -t sub-"${i}"_rec-NORM_run-PA_dwi.nii.gz sub-"${i}"_rec-NORM_run-2_dwi.nii.gz sub-"${i}"_rec-NORM_run-4_dwi.nii.gz
+
+	# use 'paste' to concatenate the bvec and bval files for run_2 & run_4
+	paste sub-"${i}"_rec-NORM_run-2_dwi.bvec sub-"${i}"_rec-NORM_run-4_dwi.bvec > sub-"${i}"_rec-NORM_run-PA_dwi.bvec
+	paste sub-"${i}"_rec-NORM_run-2_dwi.bval sub-"${i}"_rec-NORM_run-4_dwi.bval > sub-"${i}"_rec-NORM_run-PA_dwi.bval
+
+# chcek if run_1 & run_4 had the same encoding direction
+elif [ $run_1 -eq $run_4 ]; then
+
+	# if so, merge run_1 & run_4 nifti files
+	fslmerge -t sub-"${i}"_rec-NORM_run-AP_dwi.nii.gz sub-"${i}"_rec-NORM_run-1_dwi.nii.gz sub-"${i}"_rec-NORM_run-4_dwi.nii.gz
+
+	# use 'paste' to concatenate the bvec and bval files for run_1 & run_4
+	paste sub-"${i}"_rec-NORM_run-1_dwi.bvec sub-"${i}"_rec-NORM_run-4_dwi.bvec > sub-"${i}"_rec-NORM_run-AP_dwi.bvec
+	paste sub-"${i}"_rec-NORM_run-1_dwi.bval sub-"${i}"_rec-NORM_run-4_dwi.bval > sub-"${i}"_rec-NORM_run-AP_dwi.bval
+
+	# if run_1 and run_4 had the same encodig direction, also run_2 & run_3 must have the same encoding direction
+	# merge run_2 & run_3 nifti files
+	fslmerge -t sub-"${i}"_rec-NORM_run-PA_dwi.nii.gz sub-"${i}"_rec-NORM_run-2_dwi.nii.gz sub-"${i}"_rec-NORM_run-3_dwi.nii.gz
+
+	# use 'paste' to concatenate the bvec and bval files for run_2 & run_3
+	paste sub-"${i}"_rec-NORM_run-2_dwi.bvec sub-"${i}"_rec-NORM_run-3_dwi.bvec > sub-"${i}"_rec-NORM_run-PA_dwi.bvec
+	paste sub-"${i}"_rec-NORM_run-2_dwi.bval sub-"${i}"_rec-NORM_run-3_dwi.bval > sub-"${i}"_rec-NORM_run-PA_dwi.bval
+
+fi
+
+	# cd back to the BIDS folder
+	cd ../..
+
+done
+	

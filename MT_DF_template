@@ -1,0 +1,126 @@
+#!/bin/bash
+
+# STEPS
+# 1- Calculate the magnetisation transfer ratio (MTR) as MTR=100×(MToff−MTon)/MToff 
+# 2- Register the MTR image to the T1w image acquired on the day using FLIRT (interpolation nearest neighbour, 6DOF), creating the MTR_T1w
+# 3- Register the MTR_T1w to the CANONICAL T1w *
+# 4- Run group analysis
+# 5- Register CANONICAL T1w to MNI_1mm and co-register the results of the group analysis
+
+source ~/.bashrc
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# cd to the anat folder of the subject
+cd sub-PARTICIPANTID/anat/
+
+# print in the terminal the path
+echo $PWD
+
+# check if the brain extracted T1w file is present in the folder
+#if [ -f sub-PARTICIPANTID_rec-NORM_FLASH_brain.nii.gz ]; then
+
+# print the statement if the brain extracted FLASH file is found
+echo "FLASH_brain found"
+
+# assign the file to the variable 'flash_volume'
+flash_volume=sub-PARTICIPANTID_rec-NORM_FLASH_brain.nii.gz
+
+# check if the brain extracted T1map is present in the folder
+#if [ -f sub-PARTICIPANTID_rec-NORM_T1map_brain.nii.gz ]; then
+
+# print the statement if the brain extracted T1map is found
+echo "T1map_brain found"
+
+# assign the file to the variable 'MT_volume'
+MT_volume=sub-PARTICIPANTID_rec-NORM_T1map_brain.nii.gz
+
+# creating the name for the subtraction volume
+subtraction_volume=sub-PARTICIPANTID-MTR_subtraction.nii.gz
+
+# creating the name for the division volume
+division_volume=sub-PARTICIPANTID-MTR_division.nii.gz
+
+# creating the name for the final MRT
+MRT_volume=sub-PARTICIPANTID-MTR_final.nii.gz
+
+echo "STEP1: Calculate the magnetisation transfer ratio (MTR) as MTR=100×(MToff−MTon)/MToff"
+echo -e
+
+# computing the difference between FLASH and T1map and saving it in
+# subtraction_volume
+fslmaths $flash_volume -sub $MT_volume $subtraction_volume
+
+# when subtraction is done, print it in the terminal
+echo "subtraction completed"
+
+# computing the division between subtraction_volume and FLASH, and
+# saving it in division_volume
+fslmaths $subtraction_volume -div $flash_volume $division_volume
+
+# when division is done, print it in the terminal
+echo "division completed"
+
+# multiplying the division_volume by 100 and saving it in MRT_volume
+fslmaths  $division_volume -mul 100 $MRT_volume
+
+# when multiplication is done, print it in the terminal
+echo "multiplication completed"
+echo "MTR generated"
+echo -e
+
+# check if the brain extracted T1w is present in the folder
+#if [ -f sub-PARTICIPANTID_rec-NORM_T1w_brain.nii.gz ]; then
+echo "STEP2: registration of MTR to T1w_brain"
+echo "starting registration of MTR to T1w_brain"
+
+# input volume for the linear registration of MRT to T1w_brain, ie the MRT volume
+input_mtr_to_t1=sub-PARTICIPANTID-MTR_final.nii.gz
+
+# reference volume for the linear registration of MRT to T1w_brain, ie the T1w_brain
+ref_mtr_to_t1=sub-PARTICIPANTID_rec-NORM_T1w_brain.nii.gz
+
+# output volume for the linear registration of MRT to T1w_brain
+output_mtr_to_t1=sub-PARTICIPANTID-MTR_to_T1w.nii.gz
+
+# output matrix for the linear registration of MRT to T1w_brain
+mat_mtr_to_t1=sub-PARTICIPANTID-MTR_to_T1w.mat
+
+flirt -in $input_mtr_to_t1 -ref $ref_mtr_to_t1 -out $output_mtr_to_t1 -omat $mat_mtr_to_t1 -bins 256 -cost corratio -searchrx 0 0 -searchry 0 0 -searchrz 0 0 -dof 6  -interp nearestneighbour
+
+echo "registration of MTR to T1w_brain completed [MRT_T1w created]"
+echo -e
+
+echo "STEP2: registration of MRT_T1w to sub-0011-T1w_brain"
+echo "starting registration of MRT_T1w to sub-0011-T1w_brain"
+
+# reference volume for the linear registration of MRT_T1w, ie the T1w_brain from sub-011
+flirt_ref=/storage/shared/research/cinn/2018/GABAVB/BIDS/sub-0011/anat/sub-0011_rec-NORM_T1w_brain.nii.gz
+
+# input volume for the linear registration of MRT_T1w, ie MRT_T1w
+flirt_in=sub-PARTICIPANTID-MTR_to_T1w.nii.gz
+
+# output volume for the linear registration of T1w_T2w_ratio
+flirt_out=sub-PARTICIPANTID-MTR_to_T1w_CANlin.nii.gz
+
+# output matrix for the linear registration of T1w_T2w_ratio
+flirt_mat=sub-PARTICIPANTID-MTR_to_T1w_CANlin.mat
+
+flirt -in $flirt_in -ref $flirt_ref -dof 12 -out $flirt_out -omat $flirt_mat
+
+echo "Linear registration of MTR_T1w to T1w_sub-011 completed"
+
+# input volume for the non-linear registration of T1w_T2w_ratio
+fnirt_in=sub-PARTICIPANTID-MTR_to_T1w.nii.gz
+
+# output volume for the non-linear registration of T1w_T2w_ratio
+fnirt_out=sub-PARTICIPANTID-MTR_to_T1w_CAN_NOLin.nii.gz
+
+fnirt --in=$fnirt_in --ref=$flirt_ref --aff=$flirt_mat --iout=$fnirt_out 
+
+echo "Non-linear registration of MTR_T1w to T1w_sub-011 completed"
+
+#fi
+#fi
+#fi

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# STEPS
+# 1- Calculate the magnetisation transfer ratio (MTR) as MTR=100×(MToff−MTon)/MToff 
+# 2- Register the MTR image to the T1w image acquired on the day using FLIRT (interpolation nearest neighbour, 6DOF), creating the MTR_T1w
+# 3- Register the MTR_T1w to the CANONICAL T1w *
+# 4- Run group analysis
+# 5- Register CANONICAL T1w to MNI_1mm and co-register the results of the group analysis
+
+source ~/.bashrc
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# cd to the anat folder of the subject
+cd sub-PARTICIPANTID/anat/
+
+# print in the terminal the path
+echo $PWD
+
+
+
+# assign the file to the variable 'flash_volume'
+t1w_volume=sub-PARTICIPANTID_rec-NORM_T1w.nii.gz
+t2w_volume=sub-PARTICIPANTID_rec-NORM_T2w.nii.gz
+
+
+echo "run fsl_anat for T1w"
+echo -e
+
+fsl_anat -i $t1w_volume
+echo "done"
+echo -e
+
+echo "run fsl_anat for T2w"
+echo -e
+
+fsl_anat -i $t2w_volume
+echo "done"
+echo -e
+

@@ -1,0 +1,124 @@
+#!/bin/bash
+
+#cd to folder where the data are
+# cd /storage/shared/research/cinn/2018/MLCTBS/Test
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# load the fsl module
+module load fsl6.0
+
+echo "BET for FLASH and T1map"
+# here we need to add the subject numbers
+for i in 00801
+
+	do
+
+	# cd to the anat folder of the subject
+	cd sub-${i}/anat/
+
+	# print in the terminal the path
+	echo $PWD
+
+	# print the starting statement
+	echo "starting sub-${i}"
+
+	# check if the brain extracted T1w file is present in the folder
+	if [ ! -f sub-"${i}"_rec-NORM_T1w_brain* ]; then
+
+		# print the statement if the brain extracted T1w file is not found
+		echo "T1w_brain not found"
+		echo "starting BET"
+		num=1
+		for x in 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7; do
+			input_volume=sub-"${i}"_rec-NORM_T1w
+			output_volume=sub-"${i}"_rec-NORM_T1w_brain_${num}
+			f_value="${x}"
+			# FSL code to run BET
+			/usr/share/fsl/6.0/bin/bet $input_volume $output_volume -R -f $f_value -g 0
+			echo "BET T1w with f = ${x} completed"
+			# echo "opening BET"
+			num=$((num+1))
+			echo "startin new BET"
+		done
+	else
+		# print the statement if the brain extracted FLASH is found
+		echo "T1w_brain found, BET will not be run"
+	fi
+
+	echo -e
+
+	# check if the brain extracted T2w file is present in the folder
+	if [ ! -f sub-"${i}"_rec-NORM_T2w_brain* ]; then
+
+		# print the statement if the brain extracted T2w file is not found
+		echo "T2w_brain not found"
+		echo "starting BET"
+		num=1
+		for x in 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7; do
+			input_volume=sub-"${i}"_rec-NORM_T2w
+			output_volume=sub-"${i}"_rec-NORM_T2w_brain_${num}
+			f_value="${x}"
+			# FSL code to run BET
+			/usr/share/fsl/6.0/bin/bet $input_volume $output_volume -R -f $f_value -g 0
+			echo "BET T2w with f = ${x} completed"
+			num=$((num+1))
+			echo "startin new BET"
+		done
+	else
+		# print the statement if the brain extracted FLASH is found
+		echo "T2w_brain found, BET will not be run"
+	fi
+
+	echo -e
+
+	# check if the brain extracted FLASH file is present in the folder
+	if [ ! -f sub-"${i}"_rec-NORM_FLASH_brain* ]; then
+
+		# print the statement if the brain extracted FLASH file is not found
+		echo "FLASH_brain not found"
+		echo "starting BET"
+			# defying the input volume for BET
+			input_volume=sub-"${i}"_rec-NORM_FLASH
+
+			# defying the output volume for BET
+			output_volume=sub-"${i}"_rec-NORM_FLASH_brain
+
+			# FSL code to run BET
+			/usr/share/fsl/6.0/bin/bet $input_volume $output_volume -R -f 0.5 -g 0
+
+			echo "BET FLASH completed"
+	else
+		# print the statement if the brain extracted FLASH is found
+		echo "FLASH_brain found, BET will not be run"
+	fi
+
+	echo -e
+
+	# check if the brain extracted T1map file is present in the folder
+	if [ ! -f sub-"${i}"_rec-NORM_T1map_brain* ]; then
+
+		# print the statement if the brain extracted T1map file is not found
+		echo "T1map_brain not found"
+		echo "starting BET"
+
+			# defying the input volume for BET
+			input_volume=sub-"${i}"_rec-NORM_T1map
+
+			# defying the output volume for BET
+			output_volume=sub-"${i}"_rec-NORM_T1map_brain
+
+			# FSL code to run BET
+			/usr/share/fsl/6.0/bin/bet $input_volume $output_volume -R -f 0.5 -g 0
+
+			echo "BET T1 map completed"
+	else
+
+		# print the statement if the brain extracted T1map is found
+		echo "T1map_brain found, BET will not be run"
+	fi
+	echo -e
+
+	# cd back to the BIDS folder
+	cd ../..
+
+done

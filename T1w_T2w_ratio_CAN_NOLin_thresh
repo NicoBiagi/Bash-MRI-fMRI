@@ -1,0 +1,61 @@
+#!/bin/bash
+
+#cd to folder where the data are
+cd /storage/shared/research/cinn/2018/GABAVB/BIDS/
+
+# load the fsl module
+#module load fsl5.0.9
+module load fsl6.0
+#source ~/.bashrc
+
+echo "T1w/T2w ratio - thresholding"
+# here we need to add the subject numbers
+for i in 00603	00701	00702	00703	00801	00802	00803	00901	00902	00903	01001	01002	01003	0011	01102	01103	01201	01202	01203	01301	01302	01303	01401	01403	01501	01502	01601	01602	01603	01901	01902	01903	02101	02102	02103	0022	02202	02203	0023	02302	02303	0035	03502	03503	0036	03602	0037	03702	03703	0038	03802	03803	0040	04002	04003	0041	04102	04103	0042	04202	04203	0043	04302	04303
+
+
+do
+
+# cd to the anat folder of the subject
+cd sub-${i}/anat/T1w_T2w-analysis
+
+# print in the terminal the path
+echo $PWD
+
+# print the starting statement
+echo "starting sub-${i}"
+
+if [ -f sub-"${i}"_T1w_T2w_ratio_CAN_NOLin.nii.gz ]; then
+		
+# print the statement if the brain extracted FLASH file is found
+echo "T1w_T2w_ratio_CAN_NOLin found"
+echo -e
+
+# assign the file to the variable 'T1w'
+volume=sub-"${i}"_T1w_T2w_ratio_CAN_NOLin.nii.gz
+volume_thresolded=sub-"${i}"_T1w_T2w_ratio_CAN_NOLin_thresh.nii.gz
+
+#fslview_deprecated $volume
+fsleyes $volume
+read -p "Enter the threshold value > " number
+
+echo "Threshold value is $number"
+
+fslmaths $volume -uthr $number $volume_thresolded
+
+echo "Thresholding completed"
+echo -e
+
+echo "sub-${i} finished"
+echo -e
+
+else
+
+echo "T1w_T2w_ratio_CAN_NOLin not found"
+echo -e
+
+fi
+
+# cd back to the BIDS folder
+cd ../../..
+
+done
